@@ -40,8 +40,13 @@ button{font:inherit;cursor:pointer;color:#fff;border:0}button:active{transform:s
 nav{position:fixed;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));display:flex;max-width:456px;margin:0 auto;padding:6px;border-radius:24px;background:#141b36d9;z-index:8}
 nav button{flex:1;background:none;padding:10px 0;border-radius:18px;font-size:12px;color:var(--mut)}nav button b{display:block;font-size:20px}nav button.on{background:#ffffff1c;color:#fff}
 .art{padding:20px 0;border-radius:18px;font-size:20px;font-weight:700;background:var(--card);border:1px solid var(--line)}
+.toast{position:fixed;left:50%;top:max(14px,env(safe-area-inset-top));transform:translate(-50%,-110px);z-index:30;padding:12px 18px;border-radius:16px;background:#1b2347f2;border:1px solid var(--line);font-weight:600;transition:.5s cubic-bezier(.2,1.3,.4,1);max-width:92vw;text-align:center}
+.toast.on{transform:translate(-50%,0)}
+.xp{position:fixed;z-index:25;pointer-events:none;font-weight:800;color:var(--gold);font-size:22px;text-shadow:0 2px 12px #000;animation:up 1s ease-out forwards}@keyframes up{to{transform:translateY(-70px);opacity:0}}
+.wk{display:flex;gap:8px;align-items:flex-end;height:96px}.wk div{flex:1;text-align:center;font-size:11px;color:var(--mut)}.wk i{display:block;border-radius:8px 8px 4px 4px;background:linear-gradient(var(--gold),var(--red));min-height:4px;margin-bottom:4px}
+.gm{line-height:1.8;font-size:15px}.gm b{color:var(--gold)}
 .cf{position:fixed;top:-30px;font-size:26px;z-index:20;pointer-events:none;animation:fall 2.6s linear forwards}@keyframes fall{to{transform:translateY(110vh) rotate(360deg)}}
-</style></head><body><div class="flag"></div>
+</style></head><body><div class="flag"></div><div class="toast" id="toast"></div>
 <main id="home" class="view on"><p class="mut">Salom 👋</p><h1 id="hi">O'quvchi</h1>
 <div class="glass goal"><div class="ring" id="ring"><b id="gt">0/50</b></div><div><b>Kunlik maqsad: 50 XP</b><p class="mut" id="gs"></p></div></div>
 <div class="chips" id="chips"></div>
@@ -49,17 +54,17 @@ nav button{flex:1;background:none;padding:10px 0;border-radius:18px;font-size:12
 <div class="row"><button class="big" onclick="go('cards')">📚<br>Flashcards</button><button class="big" onclick="go('quiz')">🎯<br>Quiz</button></div></main>
 <main id="cards" class="view"><div class="top"><span id="cc"></span><span id="ck"></span></div><div class="pbar"><i id="cb"></i></div>
 <div class="scene" id="scene" onclick="this.classList.toggle('flip')"><div class="card"><div class="face f"><small>🇩🇪 Bosib aylantiring</small><h2 id="cd"></h2></div><div class="face b"><small>🇺🇿</small><h2 id="cu"></h2><p id="cx"></p></div></div></div>
-<div style="text-align:center;margin-bottom:14px"><button class="ico" onclick="say(deck[ci][0])">🔊 Tinglash</button></div>
+<div style="text-align:center;margin-bottom:14px"><button class="ico" onclick="say(deck[ci][0])">🔊 Tinglash</button> <button class="ico" onclick="mistDeck()">🔁 Xatolar <span id="mc"></span></button></div>
 <div class="row"><button class="no" onclick="know(0)">🔁 Takrorlash</button><button class="yes" onclick="know(1)">✅ Bilaman</button></div></main>
 <main id="quiz" class="view"><div id="qb"></div></main>
 <main id="play" class="view"><div id="pb"></div></main>
 <main id="me" class="view"><div id="mb"></div></main>
 <nav class="glass"><button data-v="home" class="on" onclick="go('home')"><b>🏠</b>Bosh</button><button data-v="cards" onclick="go('cards')"><b>📚</b>Kartalar</button><button data-v="quiz" onclick="go('quiz')"><b>🎯</b>Quiz</button><button data-v="play" onclick="go('play')"><b>🎮</b>O'yin</button><button data-v="me" onclick="go('me')"><b>🏆</b>Profil</button></nav>
 <script>
-const tg=window.Telegram?.WebApp;tg?.ready();tg?.expand();
+const tg=window.Telegram?.WebApp;tg?.ready();tg?.expand();try{tg?.setHeaderColor("#0b1020");tg?.setBackgroundColor("#0b1020")}catch(e){}
 const $=s=>document.querySelector(s),H=t=>{try{tg?.HapticFeedback?.notificationOccurred(t)}catch(e){}};
 const RANKS=[[0,"🌱 Anfänger"],[100,"🔍 Entdecker"],[500,"⚡ Profi"],[1500,"👑 Meister"]],GOAL=50;
-let S={xp:0,streak:0,day:"",level:"A1",known:{},ok:0,total:0,today:0},V={},deck=[],ci=0,Q=[],qi=0,score=0,combo=0,lock=false,wod=[];
+let S={xp:0,streak:0,day:"",level:"A1",known:{},ok:0,total:0,today:0,hist:{},mist:[]},V={},deck=[],ci=0,Q=[],qi=0,score=0,combo=0,lock=false,wod=[];
 try{Object.assign(S,JSON.parse(localStorage.dp||"{}"))}catch(e){}
 const dstr=o=>new Date(Date.now()-o*864e5).toISOString().slice(0,10);
 if(S.day!==dstr(0)){S.streak=S.day===dstr(1)?S.streak+1:1;S.day=dstr(0);S.today=0}
@@ -68,7 +73,9 @@ try{tg?.CloudStorage?.getItem("dp",(e,v)=>{try{const c=JSON.parse(v);if(c&&c.xp>
 const shuf=a=>[...a].sort(()=>Math.random()-.5);
 const rankOf=()=>RANKS.filter(r=>S.xp>=r[0]).pop()[1];
 function say(t){try{const u=new SpeechSynthesisUtterance(t);u.lang="de-DE";u.rate=.85;speechSynthesis.cancel();speechSynthesis.speak(u)}catch(e){}}
-function gain(n,ok){S.xp+=n;S.today+=n;if(ok!==undefined){S.total++;S.ok+=ok}save();render()}
+function gain(n,ok){const r0=rankOf(),b0=BADGES.map(x=>x[2]()),g0=S.today>=GOAL;S.xp+=n;S.today+=n;S.hist[dstr(0)]=(S.hist[dstr(0)]||0)+n;if(ok!==undefined){S.total++;S.ok+=ok}save();render();if(n>0)pop(n);
+ const nb=BADGES.find((x,i)=>!b0[i]&&x[2]());
+ if(rankOf()!==r0){toast("🎊 Yangi daraja: "+rankOf());rain()}else if(!g0&&S.today>=GOAL){toast("🎯 Kunlik maqsad bajarildi!");rain()}else if(nb)toast("🏅 Yangi yutuq: "+nb[1])}
 function go(v){document.querySelectorAll(".view").forEach(e=>e.classList.toggle("on",e.id===v));document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.v===v));if(v==="quiz"&&!Q.length)startQuiz();if(v==="play")playMenu();tg?.HapticFeedback?.selectionChanged?.()}
 function render(){
  $("#hi").textContent=tg?.initDataUnsafe?.user?.first_name||"O'quvchi";
@@ -78,21 +85,21 @@ function render(){
  const nx=RANKS.find(r=>r[0]>S.xp),lo=RANKS.filter(r=>S.xp>=r[0]).pop()[0],pp=nx?(S.xp-lo)/(nx[0]-lo):1,acc=S.total?Math.round(S.ok/S.total*100):0;
  $("#mb").innerHTML=`<div class="glass pf"><div class="av">🇩🇪</div><h2>${rankOf()}</h2><p class="mut">${S.xp} XP${nx?" • keyingi daraja: "+nx[0]+" XP":""}</p><br><div class="pbar"><i style="width:${pp*100}%"></i></div></div>
  <div class="grid"><div class="glass st"><b>🔥 ${S.streak}</b><small>kunlik streak</small></div><div class="glass st"><b>🎯 ${acc}%</b><small>quiz aniqligi</small></div>
- <div class="glass st"><b>✅ ${(S.known[S.level]||[]).length}</b><small>${S.level} da yodlangan</small></div><div class="glass st"><b>⭐ ${S.today}</b><small>bugungi XP</small></div></div><br><h3>🏅 Yutuqlar</h3><br><div class="grid">${badgeHTML()}</div>`}
+ <div class="glass st"><b>✅ ${(S.known[S.level]||[]).length}</b><small>${S.level} da yodlangan</small></div><div class="glass st"><b>⭐ ${S.today}</b><small>bugungi XP</small></div></div><br><h3>📈 So'nggi 7 kun</h3><br><div class="glass"><div class="wk">${weekBars()}</div></div><h3>🏅 Yutuqlar</h3><br><div class="grid">${badgeHTML()}</div>`}
 function setLvl(l){S.level=l;S.known[l]=S.known[l]||[];save();Q=[];wodInit();mkdeck();render()}
 function wodInit(){const L=V[S.level];wod=L[Math.floor(Date.now()/864e5)%L.length];$("#wd").textContent=wod[0];$("#wu").textContent=wod[1];$("#we").innerHTML="💬 <i>"+wod[2]+"</i>"}
 function mkdeck(){const k=S.known[S.level]||[],r=V[S.level].filter(w=>!k.includes(w[0]));deck=shuf(r.length?r:V[S.level]);ci=0;card()}
-function card(){$("#scene").classList.remove("flip");const w=deck[ci],k=(S.known[S.level]||[]).length,n=V[S.level].length;
+function card(){$("#scene").classList.remove("flip");$("#mc").textContent="("+S.mist.length+")";const w=deck[ci],k=(S.known[S.level]||[]).length,n=V[S.level].length;
  $("#cc").textContent=(ci+1)+"/"+deck.length;$("#ck").textContent="✅ "+k+"/"+n;$("#cb").style.width=k/n*100+"%";
  setTimeout(()=>{$("#cd").textContent=w[0];$("#cu").textContent=w[1];$("#cx").textContent="💬 "+w[2]},180)}
-function know(y){const w=deck[ci];S.known[S.level]=S.known[S.level]||[];if(y&&!S.known[S.level].includes(w[0]))S.known[S.level].push(w[0]);H(y?"success":"warning");gain(y?3:1);ci++;if(ci>=deck.length)mkdeck();else card()}
+function know(y){const w=deck[ci];if(y)S.mist=S.mist.filter(d=>d!==w[0]);S.known[S.level]=S.known[S.level]||[];if(y&&!S.known[S.level].includes(w[0]))S.known[S.level].push(w[0]);H(y?"success":"warning");gain(y?3:1);ci++;if(ci>=deck.length)mkdeck();else card()}
 function startQuiz(){const L=V[S.level];Q=shuf(L).slice(0,10).map(([de,uz,ex])=>({de,uz,ex,o:shuf([uz,...shuf(L.filter(x=>x[1]!==uz)).slice(0,3).map(x=>x[1])])}));qi=0;score=0;combo=0;ask()}
 function ask(){if(qi>=Q.length)return finish();const q=Q[qi];lock=false;
  $("#qb").innerHTML=`<div class="top"><span>${qi+1}/${Q.length}</span><span>🔥 x${combo}</span></div><div class="pbar"><i style="width:${qi/Q.length*100}%"></i></div>
  <div class="glass qc"><small>Tarjimasi nima?</small><h2>${q.de}</h2><button class="ico" onclick="say(Q[qi].de)">🔊</button></div>`+q.o.map((o,i)=>`<button class="opt" onclick="pick(${i})">${o}</button>`).join("")+`<p class="mut" id="qx"></p>`}
 function pick(i){if(lock)return;lock=true;const q=Q[qi],b=document.querySelectorAll(".opt"),ok=q.o[i]===q.uz;
  b[i].classList.add(ok?"ok":"bad");if(!ok)b[q.o.indexOf(q.uz)].classList.add("ok");
- if(ok){score++;combo++;H("success");gain(10+Math.min(combo,5)*2,1)}else{combo=0;H("error");gain(0,0)}
+ if(ok){score++;combo++;H("success");gain(10+Math.min(combo,5)*2,1)}else{combo=0;H("error");gain(0,0);addMist(q.de)}
  $("#qx").textContent="💬 "+q.ex;qi++;setTimeout(ask,1400)}
 function finish(){const e=score>=9?"🏆":score>=6?"🎉":"💪";
  $("#qb").innerHTML=`<div class="glass res"><div class="em">${e}</div><h2>${score}/${Q.length}</h2><p class="mut">${score>=6?"Ajoyib natija!":"Mashq qiling — albatta bo'ladi!"}</p><button class="yes" onclick="startQuiz()">🔁 Yana o'ynash</button></div>`;if(score>=6)rain()}
@@ -100,7 +107,7 @@ function rain(){for(let i=0;i<30;i++){const s=document.createElement("span");s.c
 const BADGES=[["🌟","Birinchi qadam",()=>S.xp>=10],["🔥","3 kunlik streak",()=>S.streak>=3],["🚀","7 kunlik streak",()=>S.streak>=7],["💯","100 XP",()=>S.xp>=100],["🎯","Aniq nishon (90%+)",()=>S.total>=10&&S.ok/S.total>=.9],["⚡","Artikl ustasi (20+)",()=>(S.best||0)>=20],["📚","20 so'z yodlandi",()=>Object.values(S.known).flat().length>=20],["👑","Meister (1500 XP)",()=>S.xp>=1500]];
 const badgeHTML=()=>BADGES.map(([e,n,f])=>`<div class="glass st" style="opacity:${f()?1:.35}"><b>${f()?e:"🔒"}</b><small>${n}</small></div>`).join("");
 let X={},AT,AW=[],AS=0,AC=0,AK=0,AL=0,ET="",EK="";
-function playMenu(){clearInterval(AT);$("#pb").innerHTML=`<h2>🎮 Mashqlar</h2><br><button class="big" style="width:100%;margin-bottom:12px" onclick="artikl()">⚡<br>Artikl Blitz — 60 soniya<br><small>Rekord: ${S.best||0}</small></button><div class="row"><button class="big" onclick="exo('h')">🎧<br>Hören</button><button class="big" onclick="exo('l')">📖<br>Lesen</button></div>`}
+function playMenu(){clearInterval(AT);$("#pb").innerHTML=`<h2>🎮 Mashqlar</h2><br><button class="big" style="width:100%;margin-bottom:12px" onclick="artikl()">⚡<br>Artikl Blitz — 60 soniya<br><small>Rekord: ${S.best||0}</small></button><div class="row"><button class="big" onclick="exo('h')">🎧<br>Hören</button><button class="big" onclick="exo('l')">📖<br>Lesen</button></div><button class="big" style="width:100%;margin-top:12px" onclick="gramList()">🧠<br>Grammatika</button>`}
 function artikl(){AW=shuf(Object.values(V).flat().filter(w=>/^(der|die|das) /.test(w[0])));AS=AC=AK=0;AL=60;clearInterval(AT);aNext();AT=setInterval(()=>{AL--;const t=$("#at");if(t)t.textContent="⏱ "+AL;if(AL<=0){clearInterval(AT);aEnd()}},1000)}
 function aNext(){const w=AW[AS%AW.length],a=w[0].split(" ")[0],n=w[0].slice(a.length+1);
  $("#pb").innerHTML=`<div class="top"><span id="at">⏱ ${AL}</span><span>✅ ${AC} • 🔥 x${AK}</span></div><div class="glass qc"><small>Qaysi artikl?</small><h2>${n}</h2><p class="mut">${w[1]}</p></div><div class="row">`+["der","die","das"].map(x=>`<button class="art" onclick="aPick('${x}','${a}')">${x}</button>`).join("")+`</div>`}
@@ -109,6 +116,15 @@ function aEnd(){const nb=AC>(S.best||0);if(nb){S.best=AC;save()}$("#pb").innerHT
 function exo(k){const L=(X[S.level]||{})[k];if(!L)return;const [t,q,o,a]=L[Math.floor(Math.random()*L.length)],c=o[a];ET=t;EK=k;lock=false;
  $("#pb").innerHTML=`<button class="no" style="padding:8px 14px;margin-bottom:12px" onclick="playMenu()">⬅️</button><div class="glass qc">`+(k==="h"?`<small>Diqqat bilan tinglang</small><br><button class="ico" onclick="say(ET)">🔊 Tinglash</button>`:`<p style="line-height:1.6;text-align:left">${t}</p>`)+`<br><b>${q}</b></div>`+shuf(o).map(x=>`<button class="opt" data-c="${x===c}" onclick="eAns(this,${x===c})">${x}</button>`).join("")+`<p class="mut" id="ex"></p>`;if(k==="h")say(t)}
 function eAns(b,ok){if(lock)return;lock=true;document.querySelectorAll(".opt").forEach(o=>{if(o.dataset.c==="true")o.classList.add("ok")});if(!ok)b.classList.add("bad");H(ok?"success":"error");gain(ok?15:2,ok?1:0);if(EK==="h")$("#ex").textContent="📝 "+ET;$("#pb").insertAdjacentHTML("beforeend",`<button class="yes" style="width:100%;margin-top:10px" onclick="exo('${EK}')">➡️ Yana</button>`)}
+let PX=innerWidth/2,PY=innerHeight/2,GR={};addEventListener("pointerdown",e=>{PX=e.clientX;PY=e.clientY});
+function pop(n){const s=document.createElement("span");s.className="xp";s.textContent="+"+n+" XP";s.style.left=PX-30+"px";s.style.top=PY-30+"px";document.body.append(s);setTimeout(()=>s.remove(),1000)}
+function toast(m){const e=$("#toast");e.textContent=m;e.classList.add("on");H("success");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("on"),2800)}
+const weekBars=()=>{const d=[...Array(7)].map((_,i)=>dstr(6-i)),m=Math.max(20,...d.map(x=>S.hist[x]||0));return d.map(x=>`<div><i style="height:${(S.hist[x]||0)/m*64}px"></i>${["Ya","Du","Se","Ch","Pa","Ju","Sh"][new Date(x).getUTCDay()]}</div>`).join("")};
+function addMist(de){if(!S.mist.includes(de)){S.mist.push(de);save()}}
+function mistDeck(){const all=Object.values(V).flat(),L=S.mist.map(d=>all.find(w=>w[0]===d)).filter(Boolean);if(!L.length)return toast("🎉 Xatolar daftari bo'sh!");deck=shuf(L);ci=0;card()}
+function gramList(){const L=GR[S.level]||[];$("#pb").innerHTML=`<button class="no" style="padding:8px 14px;margin-bottom:12px" onclick="playMenu()">⬅️</button><h2>🧠 Grammatika • ${S.level}</h2><br>`+(L.length?L.map((g,i)=>`<button class="opt" onclick="gramShow(${i})">${g[0]}</button>`).join(""):'<p class="mut">Bu daraja uchun dars hali yo\'q.</p>')}
+function gramShow(i){const g=GR[S.level][i];$("#pb").innerHTML=`<button class="no" style="padding:8px 14px;margin-bottom:12px" onclick="gramList()">⬅️</button><div class="glass gm"><h2 style="font-size:22px">${g[0]}</h2><br>${g[1].replace(/\n/g,"<br>")}</div>`}
+fetch("grammar.json").then(r=>r.json()).then(j=>{GR=j}).catch(()=>{});
 fetch("exercises.json").then(r=>r.json()).then(j=>{X=j}).catch(()=>{});
 fetch("vocab.json").then(r=>r.json()).then(j=>{V=j;if(!V[S.level])S.level=Object.keys(V)[0];S.known[S.level]=S.known[S.level]||[];wodInit();mkdeck();render()})
  .catch(()=>{document.body.innerHTML="<p style='padding:30px'>⚠️ vocab.json yuklanmadi</p>"});
