@@ -1,0 +1,11 @@
+/* Dizayn tokenlari: butun ilova ranglari, burchaklari va soyalari shu yerda */
+:root{
+  --bg:#f6f4ff;--card:#fff;--ink:#1c1840;--mute:#7a77a0;--line:#e8e4fb;--nav:rgba(255,255,255,.9);
+  --pri:#6d5dfc;--pri-d:#4f3fd6;--acc:#ff9f1c;--acc-d:#d97f00;--ok:#2bc48a;--ok-d:#1b9a6b;--bad:#ff5c6c;
+  --r:20px;--sh:0 8px 28px rgba(80,60,200,.10);--ease:cubic-bezier(.2,.8,.2,1);
+  box-sizing:border-box;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--bg:#0f0d1f;--card:#1a1735;--ink:#f1eeff;--mute:#a29fc9;--line:#2c2850;--nav:rgba(26,23,53,.9);--sh:0 8px 28px rgba(0,0,0,.4)}
+}
+:root[data-theme="dark"]{--bg:#0f0d1f;--card:#1a1735;--ink:#f1eeff;--mute:#a29fc9;--line:#2c2850;--nav:rgba(26,23,53,.9);--sh:0 8px 28px rgba(0,0,0,.4)}
